@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chat with Dave 🎮</title>
+  <style>
+    /* === General layout === */
+    body {
+      font-family: "Inter", Arial, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      color: #333;
+    }
+
+    h2 {
+      margin-top: 30px;
+      font-size: 1.8rem;
+      color: #202123;
+    }
+
+    p {
+      color: #555;
+      margin-bottom: 20px;
+    }
+
+    /* === Chat container === */
+    .container {
+      width: 95%;
+      max-width: 700px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      height: 80vh;
+    }
+
+    /* === Chat messages === */
+    .messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+    }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 15px;
+    }
+
+    .msg.bot {
+      background-color: #f7f7f8;
+      color: #222;
+      align-self: flex-start;
+      padding: 14px 18px;
+      border-radius: 12px;
+      max-width: 75%;
+      line-height: 1.4;
+      word-wrap: break-word;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .msg.user {
+      background-color: #0078ff;
+      color: #fff;
+      align-self: flex-end;
+      padding: 14px 18px;
+      border-radius: 12px;
+      max-width: 75%;
+      line-height: 1.4;
+      word-wrap: break-word;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-left: auto;
+    }
+
+    .meta {
+      font-weight: bold;
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+
+    /* === Controls === */
+    .controls {
+      display: flex;
+      padding: 15px;
+      border-top: 1px solid #ddd;
+      background-color: #fff;
+    }
+
+    .controls input[type="text"] {
+      flex: 1;
+      padding: 12px 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      transition: 0.2s;
+    }
+
+    .controls input[type="text"]:focus {
+      border-color: #0078ff;
+      box-shadow: 0 0 5px rgba(0, 120, 255, 0.3);
+    }
+
+    .btn {
+      margin-left: 10px;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.3s;
+      color: #fff;
+    }
+
+    .btn.send { background-color: #0078ff; }
+    .btn.send:hover { background-color: #005fcc; }
+
+    .btn.clear { background-color: #f44336; }
+    .btn.clear:hover { background-color: #d32f2f; }
+
+    /* Responsive */
+    @media (max-width:600px) {
+      .msg { max-width: 85%; }
+      .controls { flex-direction: column; }
+      .btn { margin-top: 8px; margin-left: 0; }
+    }
+  </style>
+</head>
+
+<body>
+  
+  <h2>🎮 Chat with Dave</h2>
+  <p>Guess what Dave describes — get it right or be roasted 😂</p>
+
+  <div class="container">
+    <div class="messages" id="messages">
+      {% for message in messages %}
+        <div class="msg {% if message.sender == 'User' %}user{% else %}bot{% endif %}">
+          <div class="meta">{{ message.sender }}</div>
+          <div>{{ message.text }}</div>
+        </div>
+      {% empty %}
+        <!-- ✅ Welcome message when no chats exist -->
+        <div class="msg bot">
+          <div class="meta">Dave</div>
+          <div>Hey there! 👋 Welcome to the Chat Game.<br>
+          Type <b>"start game"</b> to begin — guess the description I’ll give you!</div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- === Controls: separate forms === -->
+    <div class="controls">
+      <!-- Send form -->
+      <form id="sendForm" method="post" style="display:flex; flex:1;">
+        {% csrf_token %}
+        <input autocomplete="off" id="messageInput" name="message" type="text"
+          placeholder="Type your guess or 'start game'..." required />
+        <input type="hidden" name="send" value="1" />
+        <button class="btn send" type="submit">Send</button>
+      </form>
+
+      <!-- Clear form -->
+      <form id="clearForm" method="post" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="clear" value="1" />
+        <button class="btn clear" type="submit" onclick="return confirmClear()">Clear Chat</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Auto-scroll to the latest message
+    function scrollToBottom() {
+      const box = document.getElementById('messages');
+      if (!box) return;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    window.addEventListener('load', function() {
+      scrollToBottom();
+      const input = document.getElementById('messageInput');
+      if (input) input.focus();
+    });
+
+    // Observe message updates
+    const messagesNode = document.getElementById('messages');
+    if (messagesNode && window.MutationObserver) {
+      const obs = new MutationObserver(() => setTimeout(scrollToBottom, 50));
+      obs.observe(messagesNode, { childList: true });
+    }
+
+    // Confirm before clearing
+    function confirmClear() {
+      return confirm("Clear chat? This will permanently delete all messages.");
+    }
+  </script>
+</body>
+</html>
